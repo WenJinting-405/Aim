@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片编辑</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --primary-color: #6c63ff;
+            --primary-light: #8a85ff;
+            --primary-dark: #5750d6;
+            --bg-color: #f8f9fd;
+            --card-bg: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --text-tertiary: #999999;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        body {
+            font-family: "微软雅黑", Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary-dark);
+            margin: 30px 0;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .upload-area {
+            border: 2px dashed var(--text-tertiary);
+            border-radius: 16px;
+            padding: 60px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            background-color: var(--card-bg);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(108, 99, 255, 0.05), transparent);
+            transition: 0.6s;
+        }
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-5px);
+            box-shadow: 0 6px 25px rgba(108, 99, 255, 0.15);
+        }
+        .upload-area:hover::before {
+            left: 100%;
+        }
+        .upload-area p {
+            color: var(--text-secondary);
+            font-size: 18px;
+            margin-bottom: 10px;
+            transition: var(--transition);
+        }
+        .upload-area:hover p {
+            color: var(--primary-color);
+        }
+        .upload-area small {
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .preview-container {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .preview-container.active {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .preview-card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 500px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .preview-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+            transform-origin: left;
+        }
+        .preview-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 30px rgba(108, 99, 255, 0.18);
+        }
+        .preview-card:hover::after {
+            transform: scaleX(1);
+        }
+        @media (min-width: 768px) {
+            .preview-card {
+                width: calc(50% - 12.5px);
+            }
+        }
+        .preview-card h3 {
+            color: var(--primary-dark);
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        .preview-card h3::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 3px;
+        }
+        canvas {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: var(--transition);
+        }
+        canvas:hover {
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+        button:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+        }
+        button:hover::before {
+            left: 100%;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px 0;
+            color: var(--primary-color);
+        }
+        .loading.active {
+            display: block;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 15px;
+            border: 4px solid rgba(108, 99, 255, 0.1);
+            border-left-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>图片效果生成工具</h1>
+    
+    <!-- 上传区域 -->
+    <div class="upload-area" id="uploadArea">
+        <p>拖拽图片到这里，或点击选择图片</p>
+        <small>支持JPG/PNG等常见图片格式</small>
+        <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <!-- 加载状态 -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>正在处理图片，请稍候...</p>
+    </div>
+
+    <!-- 预览区域 -->
+    <div class="preview-container" id="previewContainer">
+        <!-- 毛玻璃效果 -->
+        <div class="preview-card">
+            <h3>毛玻璃效果</h3>
+            <canvas id="blurCanvas"></canvas>
+            <button id="downloadBlur">下载毛玻璃图片</button>
+        </div>
+
+        <!-- 渐变背景效果 -->
+        <div class="preview-card">
+            <h3>渐变背景效果</h3>
+            <canvas id="gradientCanvas"></canvas>
+            <button id="downloadGradient">下载渐变背景图片</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM元素
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const blurCanvas = document.getElementById('blurCanvas');
+        const gradientCanvas = document.getElementById('gradientCanvas');
+        const downloadBlur = document.getElementById('downloadBlur');
+        const downloadGradient = document.getElementById('downloadGradient');
+        const loading = document.getElementById('loading');
+
+        // Canvas上下文
+        const blurCtx = blurCanvas.getContext('2d');
+        const gradientCtx = gradientCanvas.getContext('2d');
+
+        // 拖拽事件处理
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'var(--primary-color)';
+            uploadArea.style.backgroundColor = 'rgba(108, 99, 255, 0.03)';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = 'var(--text-tertiary)';
+            uploadArea.style.backgroundColor = 'var(--card-bg)';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'var(--text-tertiary)';
+            uploadArea.style.backgroundColor = 'var(--card-bg)';
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        // 点击选择文件
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        // 处理上传的文件
+        function handleFile(file) {
+            // 显示加载状态
+            loading.classList.add('active');
+            previewContainer.classList.remove('active');
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    // 使用setTimeout模拟处理延迟，实际使用中可移除
+                    setTimeout(() => {
+                        // 裁切为16:9比例
+                        const croppedCanvas = cropTo16x9(img);
+                        // 生成毛玻璃效果
+                        generateBlurEffect(croppedCanvas);
+                        // 提取主色调
+                        const mainColor = extractMainColor(croppedCanvas);
+                        // 生成渐变背景效果
+                        generateGradientEffect(mainColor);
+                        // 隐藏加载状态，显示预览区域
+                        loading.classList.remove('active');
+                        previewContainer.classList.add('active');
+                    }, 800);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 裁切图片为16:9比例
+        function cropTo16x9(img) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const targetRatio = 16 / 9;
+            const imgRatio = img.width / img.height;
+
+            let cropW, cropH, x, y;
+            if (imgRatio > targetRatio) {
+                // 宽图：裁切左右
+                cropH = img.height;
+                cropW = img.height * targetRatio;
+                x = (img.width - cropW) / 2;
+                y = 0;
+            } else {
+                // 高图：裁切上下
+                cropW = img.width;
+                cropH = img.width / targetRatio;
+                x = 0;
+                y = (img.height - cropH) / 2;
+            }
+
+            canvas.width = cropW;
+            canvas.height = cropH;
+            ctx.drawImage(img, x, y, cropW, cropH, 0, 0, cropW, cropH);
+            return canvas;
+        }
+
+        // 生成毛玻璃效果
+        function generateBlurEffect(croppedCanvas) {
+            // 设置Canvas尺寸，考虑响应式
+            const containerWidth = previewContainer.offsetWidth;
+            const isMobile = window.innerWidth < 768;
+            const targetWidth = isMobile ? containerWidth * 0.9 : 500;
+            const targetHeight = targetWidth * 9 / 16;
+            
+            blurCanvas.width = targetWidth;
+            blurCanvas.height = targetHeight;
+            
+            // 添加绘制动画效果
+            let blurAmount = 0;
+            const animateBlur = () => {
+                blurCtx.clearRect(0, 0, blurCanvas.width, blurCanvas.height);
+                blurCtx.filter = `blur(${blurAmount}px) brightness(0.7) contrast(1.1)`;
+                blurCtx.drawImage(croppedCanvas, 0, 0, blurCanvas.width, blurCanvas.height);
+                blurCtx.filter = 'none';
+                
+                if (blurAmount < 20) {
+                    blurAmount += 0.5;
+                    requestAnimationFrame(animateBlur);
+                }
+            };
+            
+            animateBlur();
+        }
+
+        // 提取图片主色调（取中间区域平均色）
+        function extractMainColor(canvas) {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            // 取中间30%区域
+            const areaW = w * 0.3;
+            const areaH = h * 0.3;
+            const x = (w - areaW) / 2;
+            const y = (h - areaH) / 2;
+            
+            const imageData = ctx.getImageData(x, y, areaW, areaH);
+            const data = imageData.data;
+            let r = 0, g = 0, b = 0;
+            const pixelCount = data.length / 4;
+
+            for (let i = 0; i < data.length; i += 4) {
+                r += data[i];
+                g += data[i+1];
+                b += data[i+2];
+            }
+
+            return `rgb(${Math.round(r/pixelCount)}, ${Math.round(g/pixelCount)}, ${Math.round(b/pixelCount)})`;
+        }
+
+        // 生成渐变背景效果
+        function generateGradientEffect(mainColor) {
+            // 设置响应式尺寸
+            const containerWidth = previewContainer.offsetWidth;
+            const isMobile = window.innerWidth < 768;
+            const width = isMobile ? containerWidth * 0.9 : 500;
+            const height = width * 9 / 16;
+            
+            gradientCanvas.width = width;
+            gradientCanvas.height = height;
+
+            // 创建从下到上的渐变（主色→深色）
+            const gradient = gradientCtx.createLinearGradient(0, height, 0, 0);
+            gradient.addColorStop(0, mainColor); // 底部：主色调
+            gradient.addColorStop(1, adjustColor(mainColor, -0.7)); // 顶部：深色
+
+            // 添加渐变动画
+            let progress = 0;
+            const animateGradient = () => {
+                gradientCtx.clearRect(0, 0, width, height);
+                gradientCtx.fillStyle = gradient;
+                gradientCtx.fillRect(0, height - (height * progress), width, height * progress);
+                
+                if (progress < 1) {
+                    progress += 0.02;
+                    requestAnimationFrame(animateGradient);
+                }
+            };
+            
+            animateGradient();
+        }
+
+        // 调整颜色亮度（负数变暗）
+        function adjustColor(color, factor) {
+            const rgb = color.match(/\d+/g).map(Number);
+            return `rgb(${Math.max(0, Math.round(rgb[0] * (1 + factor)))}, 
+                        ${Math.max(0, Math.round(rgb[1] * (1 + factor)))}, 
+                        ${Math.max(0, Math.round(rgb[2] * (1 + factor)))})`;
+        }
+
+        // 下载Canvas图片
+        function downloadCanvas(canvas, filename) {
+            // 添加下载按钮动画
+            const button = document.getElementById(
+                filename.includes('毛玻璃') ? 'downloadBlur' : 'downloadGradient'
+            );
+            button.textContent = '正在下载...';
+            button.disabled = true;
+            
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                // 恢复按钮状态
+                setTimeout(() => {
+                    button.textContent = filename.includes('毛玻璃') ? '下载毛玻璃图片' : '下载渐变背景图片';
+                    button.disabled = false;
+                }, 1000);
+            }, 'image/png');
+        }
+
+        // 绑定下载按钮事件
+        downloadBlur.addEventListener('click', () => downloadCanvas(blurCanvas, '毛玻璃效果.png'));
+        downloadGradient.addEventListener('click', () => downloadCanvas(gradientCanvas, '渐变背景效果.png'));
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', () => {
+            // 如果已有预览图，重新绘制以适应新尺寸
+            if (previewContainer.classList.contains('active')) {
+                // 这里可以重新处理图片以适应新尺寸
+                // 简化处理，实际应用中可能需要重新加载原始图片
+            }
+        });
+    </script>
+</body>
+</html>
