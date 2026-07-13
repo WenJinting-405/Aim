@@ -5,219 +5,211 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>图片编辑</title>
     <style>
+        /* ===== 极简配色 + 动画增强 ===== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
         :root {
-            --primary-color: #6c63ff;
-            --primary-light: #8a85ff;
-            --primary-dark: #5750d6;
-            --bg-color: #f8f9fd;
+            --primary: #2b7be4;
+            --primary-dark: #1f5fa8;
+            --bg: #ffffff;
             --card-bg: #ffffff;
-            --text-primary: #333333;
-            --text-secondary: #666666;
-            --text-tertiary: #999999;
-            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --text-primary: #1a1a1a;
+            --text-secondary: #555555;
+            --text-tertiary: #888888;
+            --border: #e0e0e0;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            --transition: 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
         body {
-            font-family: "微软雅黑", Arial, sans-serif;
+            font-family: -apple-system, "Microsoft YaHei", Arial, sans-serif;
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: var(--bg-color);
+            padding: 30px 20px;
+            background-color: var(--bg);
             color: var(--text-primary);
-            line-height: 1.6;
+            line-height: 1.5;
         }
+
+        /* 标题入场 + 加粗（font-weight: 700） */
         h1 {
             text-align: center;
-            color: var(--primary-dark);
-            margin: 30px 0;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            animation: fadeIn 0.8s ease-out;
+            font-weight: 700;          /* 从 500 改为 700，加粗 */
+            font-size: 28px;
+            color: var(--text-primary);
+            margin: 20px 0 30px;
+            letter-spacing: 0.3px;
+            animation: fadeDown 0.8s ease forwards;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes fadeDown {
+            0% { opacity: 0; transform: translateY(-20px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
+
+        /* 上传区域 */
         .upload-area {
-            border: 2px dashed var(--text-tertiary);
-            border-radius: 16px;
-            padding: 60px 20px;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 50px 20px;
             text-align: center;
-            margin-bottom: 30px;
             cursor: pointer;
-            background-color: var(--card-bg);
-            transition: var(--transition);
+            background-color: #fafafa;
+            transition: border-color 0.3s, background-color 0.3s, box-shadow 0.3s;
+            margin-bottom: 30px;
             position: relative;
-            overflow: hidden;
-            box-shadow: var(--shadow);
-        }
-        .upload-area::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(108, 99, 255, 0.05), transparent);
-            transition: 0.6s;
         }
         .upload-area:hover {
-            border-color: var(--primary-color);
-            transform: translateY(-5px);
-            box-shadow: 0 6px 25px rgba(108, 99, 255, 0.15);
+            border-color: var(--primary);
+            background-color: #f0f6ff;
+            box-shadow: 0 0 0 4px rgba(43, 123, 228, 0.08);
         }
-        .upload-area:hover::before {
-            left: 100%;
+        /* 拖拽时的脉冲动画 */
+        .upload-area.drag-over {
+            border-color: var(--primary);
+            background-color: #e6f0ff;
+            animation: pulse-border 0.8s ease infinite alternate;
+        }
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(43, 123, 228, 0.2); }
+            100% { box-shadow: 0 0 0 8px rgba(43, 123, 228, 0); }
         }
         .upload-area p {
             color: var(--text-secondary);
-            font-size: 18px;
-            margin-bottom: 10px;
-            transition: var(--transition);
-        }
-        .upload-area:hover p {
-            color: var(--primary-color);
+            font-size: 17px;
+            margin-bottom: 6px;
         }
         .upload-area small {
             color: var(--text-tertiary);
-            font-size: 14px;
+            font-size: 13px;
         }
         #fileInput {
             display: none;
         }
+
+        /* 预览容器 — 使用 visibility + opacity 实现平滑入场 */
         .preview-container {
             display: flex;
-            gap: 25px;
+            gap: 24px;
             flex-wrap: wrap;
             justify-content: center;
-            display: none;
+            visibility: hidden;
             opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+            transform: translateY(30px);
+            transition: visibility 0s 0.4s, opacity 0.5s ease, transform 0.5s ease;
+            /* 延迟 visibility 隐藏，以便退场动画 */
         }
         .preview-container.active {
-            display: flex;
+            visibility: visible;
             opacity: 1;
             transform: translateY(0);
+            transition: visibility 0s 0s, opacity 0.5s ease, transform 0.5s ease;
         }
+
+        /* 卡片 — 每个卡片独立延迟入场 */
         .preview-card {
-            background-color: var(--card-bg);
-            border-radius: 16px;
-            padding: 25px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px 24px 28px;
             box-shadow: var(--shadow);
+            border: 1px solid var(--border);
             width: 100%;
             max-width: 500px;
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            opacity: 0;
+            transform: translateY(20px);
         }
-        .preview-card::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
-            transform: scaleX(0);
-            transition: transform 0.4s ease;
-            transform-origin: left;
+        .preview-container.active .preview-card {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.5s ease, transform 0.5s ease, box-shadow 0.3s ease;
+        }
+        .preview-container.active .preview-card:nth-child(1) {
+            transition-delay: 0.1s;
+        }
+        .preview-container.active .preview-card:nth-child(2) {
+            transition-delay: 0.25s;
         }
         .preview-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 10px 30px rgba(108, 99, 255, 0.18);
+            transform: translateY(-6px) !important;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
         }
-        .preview-card:hover::after {
-            transform: scaleX(1);
-        }
+
         @media (min-width: 768px) {
             .preview-card {
-                width: calc(50% - 12.5px);
+                width: calc(50% - 12px);
             }
         }
+
         .preview-card h3 {
-            color: var(--primary-dark);
-            margin-bottom: 20px;
             text-align: center;
-            font-weight: 600;
-            position: relative;
-            padding-bottom: 10px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary);
+            display: inline-block;
+            width: auto;
+            padding-left: 6px;
+            padding-right: 6px;
+            letter-spacing: 0.5px;
         }
-        .preview-card h3::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 40px;
-            height: 3px;
-            background-color: var(--primary-color);
-            border-radius: 3px;
-        }
+
         canvas {
             width: 100%;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            transition: var(--transition);
+            border-radius: 8px;
+            margin-bottom: 18px;
+            display: block;
+            background: #f0f0f0;
+            border: 1px solid #eee;
         }
-        canvas:hover {
-            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-        }
+
+        /* 按钮 — 点击缩放反馈 */
         button {
             width: 100%;
-            padding: 14px;
-            background-color: var(--primary-color);
+            padding: 12px;
+            background-color: var(--primary);
             color: white;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 500;
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-        button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: 0.5s;
+            transition: background-color 0.25s, transform 0.15s, box-shadow 0.25s;
+            transform: scale(1);
         }
         button:hover {
             background-color: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+            box-shadow: 0 2px 10px rgba(43, 123, 228, 0.25);
         }
-        button:hover::before {
-            left: 100%;
+        button:active {
+            transform: scale(0.96);
         }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: scale(1) !important;
+        }
+
+        /* 加载状态 */
         .loading {
             display: none;
             text-align: center;
             padding: 40px 0;
-            color: var(--primary-color);
+            color: var(--text-secondary);
         }
         .loading.active {
             display: block;
         }
         .spinner {
-            width: 40px;
-            height: 40px;
-            margin: 0 auto 15px;
-            border: 4px solid rgba(108, 99, 255, 0.1);
-            border-left-color: var(--primary-color);
+            width: 36px;
+            height: 36px;
+            margin: 0 auto 12px;
+            border: 3px solid #e0e0e0;
+            border-top-color: var(--primary);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
@@ -225,31 +217,28 @@
     </style>
 </head>
 <body>
+
     <h1>图片效果生成工具</h1>
-    
-    <!-- 上传区域 -->
+
     <div class="upload-area" id="uploadArea">
-        <p>拖拽图片到这里，或点击选择图片</p>
-        <small>支持JPG/PNG等常见图片格式</small>
+        <p>📤 拖拽或点击上传图片</p>
+        <small>支持 JPG / PNG 等常见格式</small>
         <input type="file" id="fileInput" accept="image/*">
     </div>
 
-    <!-- 加载状态 -->
     <div class="loading" id="loading">
         <div class="spinner"></div>
-        <p>正在处理图片，请稍候...</p>
+        <p>正在处理，请稍候…</p>
     </div>
 
-    <!-- 预览区域 -->
     <div class="preview-container" id="previewContainer">
-        <!-- 毛玻璃效果 -->
+        <!-- 毛玻璃 -->
         <div class="preview-card">
             <h3>毛玻璃效果</h3>
             <canvas id="blurCanvas"></canvas>
             <button id="downloadBlur">下载毛玻璃图片</button>
         </div>
-
-        <!-- 渐变背景效果 -->
+        <!-- 渐变背景 -->
         <div class="preview-card">
             <h3>渐变背景效果</h3>
             <canvas id="gradientCanvas"></canvas>
@@ -258,7 +247,7 @@
     </div>
 
     <script>
-        // DOM元素
+        // ---------- DOM 引用 ----------
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const previewContainer = document.getElementById('previewContainer');
@@ -268,225 +257,180 @@
         const downloadGradient = document.getElementById('downloadGradient');
         const loading = document.getElementById('loading');
 
-        // Canvas上下文
         const blurCtx = blurCanvas.getContext('2d');
         const gradientCtx = gradientCanvas.getContext('2d');
 
-        // 拖拽事件处理
+        // ---------- 上传事件（带拖拽脉冲动画） ----------
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadArea.style.borderColor = 'var(--primary-color)';
-            uploadArea.style.backgroundColor = 'rgba(108, 99, 255, 0.03)';
+            uploadArea.classList.add('drag-over');
         });
-
         uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.borderColor = 'var(--text-tertiary)';
-            uploadArea.style.backgroundColor = 'var(--card-bg)';
+            uploadArea.classList.remove('drag-over');
         });
-
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            uploadArea.style.borderColor = 'var(--text-tertiary)';
-            uploadArea.style.backgroundColor = 'var(--card-bg)';
+            uploadArea.classList.remove('drag-over');
             const file = e.dataTransfer.files[0];
             if (file) handleFile(file);
         });
-
-        // 点击选择文件
         uploadArea.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) handleFile(file);
         });
 
-        // 处理上传的文件
+        // ---------- 核心处理 ----------
         function handleFile(file) {
-            // 显示加载状态
             loading.classList.add('active');
-            previewContainer.classList.remove('active');
-            
+            previewContainer.classList.remove('active'); // 隐藏之前的预览
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    // 使用setTimeout模拟处理延迟，实际使用中可移除
+                    // 模拟处理延迟（实际可去掉）
                     setTimeout(() => {
-                        // 裁切为16:9比例
-                        const croppedCanvas = cropTo16x9(img);
-                        // 生成毛玻璃效果
-                        generateBlurEffect(croppedCanvas);
-                        // 提取主色调
-                        const mainColor = extractMainColor(croppedCanvas);
-                        // 生成渐变背景效果
+                        const cropped = cropTo16x9(img);
+                        generateBlurEffect(cropped);
+                        const mainColor = extractMainColor(cropped);
                         generateGradientEffect(mainColor);
-                        // 隐藏加载状态，显示预览区域
                         loading.classList.remove('active');
-                        previewContainer.classList.add('active');
-                    }, 800);
+                        previewContainer.classList.add('active'); // 触发卡片入场动画
+                    }, 600);
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        // 裁切图片为16:9比例
+        // 裁切为 16:9
         function cropTo16x9(img) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            const targetRatio = 16 / 9;
+            const ratio = 16 / 9;
             const imgRatio = img.width / img.height;
-
             let cropW, cropH, x, y;
-            if (imgRatio > targetRatio) {
-                // 宽图：裁切左右
+            if (imgRatio > ratio) {
                 cropH = img.height;
-                cropW = img.height * targetRatio;
+                cropW = img.height * ratio;
                 x = (img.width - cropW) / 2;
                 y = 0;
             } else {
-                // 高图：裁切上下
                 cropW = img.width;
-                cropH = img.width / targetRatio;
+                cropH = img.width / ratio;
                 x = 0;
                 y = (img.height - cropH) / 2;
             }
-
             canvas.width = cropW;
             canvas.height = cropH;
             ctx.drawImage(img, x, y, cropW, cropH, 0, 0, cropW, cropH);
             return canvas;
         }
 
-        // 生成毛玻璃效果
+        // 毛玻璃效果（渐进模糊动画）
         function generateBlurEffect(croppedCanvas) {
-            // 设置Canvas尺寸，考虑响应式
-            const containerWidth = previewContainer.offsetWidth;
+            const containerWidth = previewContainer.offsetWidth || 500;
             const isMobile = window.innerWidth < 768;
             const targetWidth = isMobile ? containerWidth * 0.9 : 500;
             const targetHeight = targetWidth * 9 / 16;
-            
+
             blurCanvas.width = targetWidth;
             blurCanvas.height = targetHeight;
-            
-            // 添加绘制动画效果
-            let blurAmount = 0;
-            const animateBlur = () => {
+
+            let blur = 0;
+            const step = 0.6;
+            const maxBlur = 18;
+
+            function drawBlur() {
                 blurCtx.clearRect(0, 0, blurCanvas.width, blurCanvas.height);
-                blurCtx.filter = `blur(${blurAmount}px) brightness(0.7) contrast(1.1)`;
+                blurCtx.filter = `blur(${blur}px) brightness(0.7) contrast(1.1)`;
                 blurCtx.drawImage(croppedCanvas, 0, 0, blurCanvas.width, blurCanvas.height);
                 blurCtx.filter = 'none';
-                
-                if (blurAmount < 20) {
-                    blurAmount += 0.5;
-                    requestAnimationFrame(animateBlur);
+                if (blur < maxBlur) {
+                    blur = Math.min(blur + step, maxBlur);
+                    requestAnimationFrame(drawBlur);
                 }
-            };
-            
-            animateBlur();
+            }
+            drawBlur();
         }
 
-        // 提取图片主色调（取中间区域平均色）
+        // 提取主色调（中心区域平均）
         function extractMainColor(canvas) {
             const ctx = canvas.getContext('2d');
-            const w = canvas.width;
-            const h = canvas.height;
-            // 取中间30%区域
-            const areaW = w * 0.3;
-            const areaH = h * 0.3;
-            const x = (w - areaW) / 2;
-            const y = (h - areaH) / 2;
-            
+            const w = canvas.width, h = canvas.height;
+            const areaW = w * 0.3, areaH = h * 0.3;
+            const x = (w - areaW) / 2, y = (h - areaH) / 2;
             const imageData = ctx.getImageData(x, y, areaW, areaH);
             const data = imageData.data;
             let r = 0, g = 0, b = 0;
-            const pixelCount = data.length / 4;
-
+            const count = data.length / 4;
             for (let i = 0; i < data.length; i += 4) {
                 r += data[i];
                 g += data[i+1];
                 b += data[i+2];
             }
-
-            return `rgb(${Math.round(r/pixelCount)}, ${Math.round(g/pixelCount)}, ${Math.round(b/pixelCount)})`;
+            return `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
         }
 
-        // 生成渐变背景效果
+        // 渐变背景效果（自下而上）
         function generateGradientEffect(mainColor) {
-            // 设置响应式尺寸
-            const containerWidth = previewContainer.offsetWidth;
+            const containerWidth = previewContainer.offsetWidth || 500;
             const isMobile = window.innerWidth < 768;
             const width = isMobile ? containerWidth * 0.9 : 500;
             const height = width * 9 / 16;
-            
+
             gradientCanvas.width = width;
             gradientCanvas.height = height;
 
-            // 创建从下到上的渐变（主色→深色）
-            const gradient = gradientCtx.createLinearGradient(0, height, 0, 0);
-            gradient.addColorStop(0, mainColor); // 底部：主色调
-            gradient.addColorStop(1, adjustColor(mainColor, -0.7)); // 顶部：深色
+            const grad = gradientCtx.createLinearGradient(0, height, 0, 0);
+            grad.addColorStop(0, mainColor);
+            grad.addColorStop(1, adjustColor(mainColor, -0.6));
 
-            // 添加渐变动画
             let progress = 0;
-            const animateGradient = () => {
+            function drawGrad() {
                 gradientCtx.clearRect(0, 0, width, height);
-                gradientCtx.fillStyle = gradient;
-                gradientCtx.fillRect(0, height - (height * progress), width, height * progress);
-                
+                gradientCtx.fillStyle = grad;
+                gradientCtx.fillRect(0, height - height * progress, width, height * progress);
                 if (progress < 1) {
-                    progress += 0.02;
-                    requestAnimationFrame(animateGradient);
+                    progress = Math.min(progress + 0.025, 1);
+                    requestAnimationFrame(drawGrad);
                 }
-            };
-            
-            animateGradient();
+            }
+            drawGrad();
         }
 
-        // 调整颜色亮度（负数变暗）
+        // 颜色变暗
         function adjustColor(color, factor) {
             const rgb = color.match(/\d+/g).map(Number);
-            return `rgb(${Math.max(0, Math.round(rgb[0] * (1 + factor)))}, 
-                        ${Math.max(0, Math.round(rgb[1] * (1 + factor)))}, 
+            return `rgb(${Math.max(0, Math.round(rgb[0] * (1 + factor)))},
+                        ${Math.max(0, Math.round(rgb[1] * (1 + factor)))},
                         ${Math.max(0, Math.round(rgb[2] * (1 + factor)))})`;
         }
 
-        // 下载Canvas图片
+        // ---------- 下载（带按钮禁用和文字反馈） ----------
         function downloadCanvas(canvas, filename) {
-            // 添加下载按钮动画
-            const button = document.getElementById(
-                filename.includes('毛玻璃') ? 'downloadBlur' : 'downloadGradient'
-            );
-            button.textContent = '正在下载...';
-            button.disabled = true;
-            
+            const btn = filename.includes('毛玻璃') ? downloadBlur : downloadGradient;
+            btn.textContent = '下载中…';
+            btn.disabled = true;
             canvas.toBlob(blob => {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = filename;
+                document.body.appendChild(a);
                 a.click();
+                document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                
-                // 恢复按钮状态
                 setTimeout(() => {
-                    button.textContent = filename.includes('毛玻璃') ? '下载毛玻璃图片' : '下载渐变背景图片';
-                    button.disabled = false;
-                }, 1000);
+                    btn.textContent = filename.includes('毛玻璃') ? '下载毛玻璃图片' : '下载渐变背景图片';
+                    btn.disabled = false;
+                }, 800);
             }, 'image/png');
         }
 
-        // 绑定下载按钮事件
         downloadBlur.addEventListener('click', () => downloadCanvas(blurCanvas, '毛玻璃效果.png'));
         downloadGradient.addEventListener('click', () => downloadCanvas(gradientCanvas, '渐变背景效果.png'));
-
-        // 响应窗口大小变化
-        window.addEventListener('resize', () => {
-            // 如果已有预览图，重新绘制以适应新尺寸
-            if (previewContainer.classList.contains('active')) {
-                // 这里可以重新处理图片以适应新尺寸
-                // 简化处理，实际应用中可能需要重新加载原始图片
-            }
-        });
     </script>
 </body>
 </html>
