@@ -56,14 +56,9 @@
             text-align: center;
             cursor: pointer;
             background-color: #fafafa;
-            transition: border-color 0.3s, background-color 0.3s, box-shadow 0.3s;
+            transition: border-color 0.3s, background-color 0.3s, box-shadow 0.3s, transform 0.15s ease;
             margin-bottom: 30px;
             position: relative;
-        }
-        .upload-area:hover {
-            border-color: var(--primary);
-            background-color: #f0f6ff;
-            box-shadow: 0 0 0 4px rgba(43, 123, 228, 0.08);
         }
         /* 拖拽时的脉冲动画 */
         .upload-area.drag-over {
@@ -74,6 +69,9 @@
         @keyframes pulse-border {
             0% { box-shadow: 0 0 0 0 rgba(43, 123, 228, 0.2); }
             100% { box-shadow: 0 0 0 8px rgba(43, 123, 228, 0); }
+        }
+        .upload-area:active {
+            transform: scale(0.99);
         }
         .upload-area p {
             color: var(--text-secondary);
@@ -131,9 +129,13 @@
         .preview-container.active .preview-card:nth-child(2) {
             transition-delay: 0.25s;
         }
+        /* 轻微触碰动画：悬停上浮 + 按压缩放 */
         .preview-card:hover {
             transform: translateY(-6px) !important;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+        .preview-card:active {
+            transform: translateY(-2px) scale(0.98) !important;
         }
 
         @media (min-width: 768px) {
@@ -165,6 +167,15 @@
             border: 1px solid #eee;
         }
 
+        /* 综合色卡画布轻入场（不影响输出图片内容） */
+        #colorCardCanvas {
+            animation: cardFadeIn 0.6s ease;
+        }
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
         /* 按钮 — 点击缩放反馈 */
         button {
             width: 100%;
@@ -184,7 +195,7 @@
             box-shadow: 0 2px 10px rgba(43, 123, 228, 0.25);
         }
         button:active {
-            transform: scale(0.96);
+            transform: scale(0.97);
         }
         button:disabled {
             opacity: 0.6;
@@ -214,6 +225,40 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* 触屏设备适配：避免悬停效果残留，仅保留按压反馈 */
+        @media (hover: hover) {
+            .upload-area:hover {
+                border-color: var(--primary);
+                background-color: #f0f6ff;
+                box-shadow: 0 0 0 4px rgba(43, 123, 228, 0.08);
+            }
+            .preview-card:hover {
+                transform: translateY(-6px) !important;
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            }
+            button:hover {
+                background-color: var(--primary-dark);
+                box-shadow: 0 2px 10px rgba(43, 123, 228, 0.25);
+            }
+        }
+
+        /* 手机端（小屏）紧凑适配，不改变整体排版结构 */
+        @media (max-width: 560px) {
+            body {
+                padding: 20px 14px;
+            }
+            h1 {
+                font-size: 24px;
+                margin: 14px 0 22px;
+            }
+            .upload-area {
+                padding: 36px 14px;
+            }
+            .preview-container {
+                gap: 18px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -238,11 +283,11 @@
             <canvas id="blurCanvas"></canvas>
             <button id="downloadBlur">下载毛玻璃图片</button>
         </div>
-        <!-- 渐变背景 -->
+        <!-- 综合色卡 -->
         <div class="preview-card">
-            <h3>渐变背景效果</h3>
-            <canvas id="gradientCanvas"></canvas>
-            <button id="downloadGradient">下载渐变背景图片</button>
+            <h3>综合色卡</h3>
+            <canvas id="colorCardCanvas"></canvas>
+            <button id="downloadColorCard">下载综合色卡图片</button>
         </div>
     </div>
 
@@ -252,13 +297,13 @@
         const fileInput = document.getElementById('fileInput');
         const previewContainer = document.getElementById('previewContainer');
         const blurCanvas = document.getElementById('blurCanvas');
-        const gradientCanvas = document.getElementById('gradientCanvas');
+        const colorCardCanvas = document.getElementById('colorCardCanvas');
         const downloadBlur = document.getElementById('downloadBlur');
-        const downloadGradient = document.getElementById('downloadGradient');
+        const downloadColorCard = document.getElementById('downloadColorCard');
         const loading = document.getElementById('loading');
 
         const blurCtx = blurCanvas.getContext('2d');
-        const gradientCtx = gradientCanvas.getContext('2d');
+        const colorCardCtx = colorCardCanvas.getContext('2d');
 
         // ---------- 上传事件（带拖拽脉冲动画） ----------
         uploadArea.addEventListener('dragover', (e) => {
@@ -293,8 +338,7 @@
                     setTimeout(() => {
                         const cropped = cropTo16x9(img);
                         generateBlurEffect(cropped);
-                        const mainColor = extractMainColor(cropped);
-                        generateGradientEffect(mainColor);
+                        generateColorCard(img);
                         loading.classList.remove('active');
                         previewContainer.classList.add('active'); // 触发卡片入场动画
                     }, 600);
@@ -328,7 +372,7 @@
             return canvas;
         }
 
-        // 毛玻璃效果（渐进模糊动画）
+        // 毛玻璃效果（渐进模糊动画，效果保持不变）
         function generateBlurEffect(croppedCanvas) {
             const containerWidth = previewContainer.offsetWidth || 500;
             const isMobile = window.innerWidth < 768;
@@ -350,67 +394,81 @@
                 if (blur < maxBlur) {
                     blur = Math.min(blur + step, maxBlur);
                     requestAnimationFrame(drawBlur);
+                } else {
+                    // 动画完成后强制不透明
+                    makeOpaque(blurCanvas);
                 }
             }
             drawBlur();
         }
 
-        // 提取主色调（中心区域平均）
-        function extractMainColor(canvas) {
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width, h = canvas.height;
-            const areaW = w * 0.3, areaH = h * 0.3;
-            const x = (w - areaW) / 2, y = (h - areaH) / 2;
-            const imageData = ctx.getImageData(x, y, areaW, areaH);
-            const data = imageData.data;
-            let r = 0, g = 0, b = 0;
-            const count = data.length / 4;
-            for (let i = 0; i < data.length; i += 4) {
-                r += data[i];
-                g += data[i+1];
-                b += data[i+2];
+        // 提取整张图片的综合色：全部像素按透明度加权的平均色
+        function extractComprehensiveColor(img) {
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+
+            // 超大图保护：超过 2500 万像素时等比缩放后再计算，避免内存过大
+            const MAX_PIXELS = 25 * 1000 * 1000;
+            let dw = w, dh = h;
+            if (w * h > MAX_PIXELS) {
+                const scale = Math.sqrt(MAX_PIXELS / (w * h));
+                dw = Math.max(1, Math.round(w * scale));
+                dh = Math.max(1, Math.round(h * scale));
             }
-            return `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = dw;
+            canvas.height = dh;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, dw, dh);
+
+            const data = ctx.getImageData(0, 0, dw, dh).data;
+            let r = 0, g = 0, b = 0, aSum = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const a = data[i + 3];
+                if (a === 0) continue; // 忽略完全透明的像素
+                r += data[i] * a;
+                g += data[i + 1] * a;
+                b += data[i + 2] * a;
+                aSum += a;
+            }
+            if (aSum === 0) return { r: 255, g: 255, b: 255 };
+            return {
+                r: Math.round(r / aSum),
+                g: Math.round(g / aSum),
+                b: Math.round(b / aSum)
+            };
         }
 
-        // 渐变背景效果（自下而上）
-        function generateGradientEffect(mainColor) {
+        // 综合色卡：整张画布填充单一综合色（无渐变、无模糊、无第二色），16:9
+        function generateColorCard(img) {
             const containerWidth = previewContainer.offsetWidth || 500;
             const isMobile = window.innerWidth < 768;
             const width = isMobile ? containerWidth * 0.9 : 500;
             const height = width * 9 / 16;
 
-            gradientCanvas.width = width;
-            gradientCanvas.height = height;
+            colorCardCanvas.width = width;
+            colorCardCanvas.height = height;
 
-            const grad = gradientCtx.createLinearGradient(0, height, 0, 0);
-            grad.addColorStop(0, mainColor);
-            grad.addColorStop(1, adjustColor(mainColor, -0.6));
+            const { r, g, b } = extractComprehensiveColor(img);
+            colorCardCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            colorCardCtx.fillRect(0, 0, width, height);
+            makeOpaque(colorCardCanvas);
+        }
 
-            let progress = 0;
-            function drawGrad() {
-                gradientCtx.clearRect(0, 0, width, height);
-                gradientCtx.fillStyle = grad;
-                gradientCtx.fillRect(0, height - height * progress, width, height * progress);
-                if (progress < 1) {
-                    progress = Math.min(progress + 0.025, 1);
-                    requestAnimationFrame(drawGrad);
-                }
+        // 保证输出完全不透明：将所有像素 alpha 通道强制置为 255
+        function makeOpaque(canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            for (let i = 3; i < data.length; i += 4) {
+                data[i] = 255;
             }
-            drawGrad();
+            ctx.putImageData(imageData, 0, 0);
         }
 
-        // 颜色变暗
-        function adjustColor(color, factor) {
-            const rgb = color.match(/\d+/g).map(Number);
-            return `rgb(${Math.max(0, Math.round(rgb[0] * (1 + factor)))},
-                        ${Math.max(0, Math.round(rgb[1] * (1 + factor)))},
-                        ${Math.max(0, Math.round(rgb[2] * (1 + factor)))})`;
-        }
-
-        // ---------- 下载（带按钮禁用和文字反馈） ----------
-        function downloadCanvas(canvas, filename) {
-            const btn = filename.includes('毛玻璃') ? downloadBlur : downloadGradient;
+        // ---------- 下载（PNG 格式不变，带按钮禁用和文字反馈） ----------
+        function downloadCanvas(canvas, filename, btn, idleText) {
             btn.textContent = '下载中…';
             btn.disabled = true;
             canvas.toBlob(blob => {
@@ -423,14 +481,15 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 setTimeout(() => {
-                    btn.textContent = filename.includes('毛玻璃') ? '下载毛玻璃图片' : '下载渐变背景图片';
+                    btn.textContent = idleText;
                     btn.disabled = false;
                 }, 800);
             }, 'image/png');
         }
 
-        downloadBlur.addEventListener('click', () => downloadCanvas(blurCanvas, '毛玻璃效果.png'));
-        downloadGradient.addEventListener('click', () => downloadCanvas(gradientCanvas, '渐变背景效果.png'));
+        downloadBlur.addEventListener('click', () => downloadCanvas(blurCanvas, '毛玻璃效果.png', downloadBlur, '下载毛玻璃图片'));
+        downloadColorCard.addEventListener('click', () => downloadCanvas(colorCardCanvas, '综合色卡.png', downloadColorCard, '下载综合色卡图片'));
     </script>
 </body>
 </html>
+<!-- （注：内容由AI生成） -->
